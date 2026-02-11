@@ -1,7 +1,6 @@
 package com.axeno.tasktracking.controller;
 
-import com.axeno.tasktracking.dto.ApiResponse;
-import com.axeno.tasktracking.dto.PendingTaskInfo;
+import com.axeno.tasktracking.dto.*;
 import com.axeno.tasktracking.model.*;
 import com.axeno.tasktracking.utils.JsonFileHandler;
 import com.axeno.tasktracking.utils.ResponseUtil;
@@ -101,38 +100,16 @@ public class TaskTrackingServlet extends HttpServlet {
                     return;
                 }
 
-                List<Program> programs = taskTrackingData.getPrograms().stream()
+                List<IndividualPrograms> programs = taskTrackingData.getPrograms().stream()
                         .filter(program -> program.getProjects() != null &&
                                 program.getProjects().stream()
                                         .anyMatch(project -> project.getEnrolledIndividuals() != null &&
                                                 project.getEnrolledIndividuals().contains(individualId)))
+                        .map(program -> new IndividualPrograms(program.getId(), program.getName()))
                         .collect(Collectors.toList());
 
                 ResponseUtil.sendJson(response, 200,
                         new ApiResponse<>(true, "Programs fetched", programs));
-            }
-
-            // Projects by Individual
-            else if ("/projects".equals(path)) {
-
-                String individualId = request.getParameter("individualId");
-
-                if (individualId == null || individualId.isEmpty()) {
-                    ResponseUtil.sendJson(response, 400,
-                            new ApiResponse<>(false, "individualId is required", null));
-                    return;
-                }
-
-                List<Project> projects = taskTrackingData.getPrograms().stream()
-                        .flatMap(program -> program.getProjects() != null
-                                ? program.getProjects().stream()
-                                : Collections.<Project>emptyList().stream())
-                        .filter(project -> project.getEnrolledIndividuals() != null &&
-                                project.getEnrolledIndividuals().contains(individualId))
-                        .collect(Collectors.toList());
-
-                ResponseUtil.sendJson(response, 200,
-                        new ApiResponse<>(true, "Projects fetched", projects));
             }
 
             // Pending Task Details
@@ -142,57 +119,153 @@ public class TaskTrackingServlet extends HttpServlet {
                 String programId = request.getParameter("programId");
                 String projectId = request.getParameter("projectId");
 
-                List<PendingTaskInfo> pendingTasks = new ArrayList<>();
+                if (projectId != null && !projectId.isEmpty()) {
+                    // Optimized response for specific project
+                    List<com.axeno.tasktracking.dto.ProjectPendingTask> pendingTasks = new ArrayList<>();
+                    String resolvedProgramId = null;
+                    String programName = null;
+                    String projectName = null;
 
-                for (Program program : taskTrackingData.getPrograms()) {
+                    for (Program program : taskTrackingData.getPrograms()) {
+                        if (program.getProjects() == null)
+                            continue;
 
-                    if (programId != null && !program.getId().equals(programId)) {
-                        continue;
+                        for (Project project : program.getProjects()) {
+                            if (project.getId().equals(projectId)) {
+                                resolvedProgramId = program.getId();
+                                programName = program.getName();
+                                projectName = project.getName();
+
+                                if (project.getTasks() != null) {
+                                    for (Task task : project.getTasks()) {
+                                        if (task.getStatus() == null
+                                                || !task.getStatus().name().equalsIgnoreCase("PENDING")) {
+                                            continue;
+                                        }
+                                        if (individualId != null) {
+                                            if (task.getOwners() == null || !task.getOwners().contains(individualId)) {
+                                                continue;
+                                            }
+                                        }
+                                        pendingTasks.add(new com.axeno.tasktracking.dto.ProjectPendingTask(
+                                                task.getId(),
+                                                task.getTitle()));
+                                    }
+                                }
+                                break; // Found the project
+                            }
+                        }
+                        if (resolvedProgramId != null)
+                            break; // Found the program and project
                     }
 
-                    if (program.getProjects() == null)
-                        continue;
+                    if (resolvedProgramId != null) {
+                        Map<String, Object> result = new LinkedHashMap<>();
+                        result.put("programId", resolvedProgramId);
+                        result.put("programName", programName);
+                        result.put("projectId", projectId);
+                        result.put("projectName", projectName);
+                        result.put("count", pendingTasks.size());
+                        result.put("tasks", pendingTasks);
 
-                    for (Project project : program.getProjects()) {
+                        ResponseUtil.sendJson(response, 200,
+                                new ApiResponse<>(true, "Pending tasks fetched", result));
+                    } else {
+                        Map<String, Object> result = new LinkedHashMap<>();
+                        result.put("projectId", projectId);
+                        result.put("count", 0);
+                        result.put("tasks", Collections.emptyList());
 
-                        if (projectId != null && !project.getId().equals(projectId)) {
-                            continue;
-                        }
+                        ResponseUtil.sendJson(response, 200,
+                                new ApiResponse<>(true, "Project not found or no pending tasks", result));
 
-                        if (project.getTasks() == null)
-                            continue;
+                    }
 
-                        for (Task task : project.getTasks()) {
+                } else if (programId != null && !programId.isEmpty()) {
+                    // Optimized response for specific program
+                    List<UserProgramPendingTask> pendingTasks = new ArrayList<>();
+                    String programName = null;
 
-                            if (task.getStatus() == null ||
-                                    !task.getStatus().name().equalsIgnoreCase("PENDING")) {
+                    for (Program program : taskTrackingData.getPrograms()) {
+                        if (program.getId().equals(programId)) {
+                            programName = program.getName();
+                            if (program.getProjects() == null)
                                 continue;
-                            }
 
-                            if (individualId != null) {
-                                if (task.getOwners() == null ||
-                                        !task.getOwners().contains(individualId)) {
+                            for (Project project : program.getProjects()) {
+                                if (project.getTasks() == null)
                                     continue;
+
+                                for (Task task : project.getTasks()) {
+                                    if (task.getStatus() == null
+                                            || !task.getStatus().name().equalsIgnoreCase("PENDING")) {
+                                        continue;
+                                    }
+                                    if (individualId != null) {
+                                        if (task.getOwners() == null || !task.getOwners().contains(individualId)) {
+                                            continue;
+                                        }
+                                    }
+                                    pendingTasks.add(new UserProgramPendingTask(
+                                            project.getId(),
+                                            project.getName(),
+                                            task.getId(),
+                                            task.getTitle()));
                                 }
                             }
-
-                            pendingTasks.add(new PendingTaskInfo(
-                                    program.getId(),
-                                    program.getName(),
-                                    project.getId(),
-                                    project.getName(),
-                                    task.getId(),
-                                    task.getTitle()));
+                            break; // Found the program
                         }
                     }
+
+                    Map<String, Object> result = new LinkedHashMap<>(); // LinkedHashMap for order
+                    result.put("programId", programId);
+                    result.put("programName", programName);
+                    result.put("count", pendingTasks.size());
+                    result.put("tasks", pendingTasks);
+
+                    ResponseUtil.sendJson(response, 200,
+                            new ApiResponse<>(true, "Pending tasks fetched", result));
+
+                } else {
+                    // Standard response for all programs
+                    List<UserPendingTask> pendingTasks = new ArrayList<>();
+
+                    for (Program program : taskTrackingData.getPrograms()) {
+                        if (program.getProjects() == null)
+                            continue;
+
+                        for (Project project : program.getProjects()) {
+                            if (project.getTasks() == null)
+                                continue;
+
+                            for (Task task : project.getTasks()) {
+                                if (task.getStatus() == null || !task.getStatus().name().equalsIgnoreCase("PENDING")) {
+                                    continue;
+                                }
+                                if (individualId != null) {
+                                    if (task.getOwners() == null || !task.getOwners().contains(individualId)) {
+                                        continue;
+                                    }
+                                }
+
+                                pendingTasks.add(new UserPendingTask(
+                                        program.getId(),
+                                        program.getName(),
+                                        project.getId(),
+                                        project.getName(),
+                                        task.getId(),
+                                        task.getTitle()));
+                            }
+                        }
+                    }
+
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("count", pendingTasks.size());
+                    result.put("tasks", pendingTasks);
+
+                    ResponseUtil.sendJson(response, 200,
+                            new ApiResponse<>(true, "Pending tasks fetched", result));
                 }
-
-                Map<String, Object> result = new HashMap<>();
-                result.put("count", pendingTasks.size());
-                result.put("tasks", pendingTasks);
-
-                ResponseUtil.sendJson(response, 200,
-                        new ApiResponse<>(true, "Pending tasks fetched", result));
             }
 
             // Program Name by Project

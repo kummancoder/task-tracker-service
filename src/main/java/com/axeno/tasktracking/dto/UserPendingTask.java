@@ -1,6 +1,6 @@
 package com.axeno.tasktracking.dto;
 
-public class PendingTaskInfo {
+public class UserPendingTask {
 
     private String programId;
     private String programName;
@@ -9,9 +9,9 @@ public class PendingTaskInfo {
     private String taskId;
     private String taskTitle;
 
-    public PendingTaskInfo(String programId, String programName,
-            String projectId, String projectName,
-            String taskId, String taskTitle) {
+    public UserPendingTask(String programId, String programName,
+                           String projectId, String projectName,
+                           String taskId, String taskTitle) {
         this.programId = programId;
         this.programName = programName;
         this.projectId = projectId;
