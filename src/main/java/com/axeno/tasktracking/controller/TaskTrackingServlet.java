@@ -3,10 +3,12 @@ package com.axeno.tasktracking.controller;
 import com.axeno.tasktracking.dto.ApiResponse;
 import com.axeno.tasktracking.dto.PendingTaskInfo;
 import com.axeno.tasktracking.model.*;
+import com.axeno.tasktracking.utils.JsonFileHandler;
 import com.axeno.tasktracking.utils.ResponseUtil;
-import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 
+import javax.servlet.ServletException;
+import javax.servlet.annotation.MultipartConfig;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 import java.io.IOException;
@@ -14,14 +16,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @WebServlet("/api/*")
+@MultipartConfig
 public class TaskTrackingServlet extends HttpServlet {
 
-    private final Gson gson = new Gson();
     private TaskTrackingData taskTrackingData;
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws IOException {
+            throws IOException, ServletException {
 
         String path = request.getPathInfo();
 
@@ -32,21 +34,20 @@ public class TaskTrackingServlet extends HttpServlet {
         }
 
         try {
-            String requestBody = request.getReader()
-                    .lines()
-                    .collect(Collectors.joining());
+            Part filePart = request.getPart("file");
 
-            if (requestBody == null || requestBody.trim().isEmpty()) {
+            if (filePart == null) {
                 ResponseUtil.sendJson(response, 400,
-                        new ApiResponse<>(false, "Request body is empty", null));
+                        new ApiResponse<>(false, "File part 'file' is missing", null));
                 return;
             }
 
-            TaskTrackingData data = gson.fromJson(requestBody, TaskTrackingData.class);
+            JsonFileHandler.saveFile(filePart);
+            TaskTrackingData data = JsonFileHandler.loadData();
 
             if (data == null || data.getPrograms() == null) {
                 ResponseUtil.sendJson(response, 400,
-                        new ApiResponse<>(false, "Invalid JSON structure", null));
+                        new ApiResponse<>(false, "Invalid JSON structure in file", null));
                 return;
             }
 
@@ -58,6 +59,9 @@ public class TaskTrackingServlet extends HttpServlet {
         } catch (JsonSyntaxException e) {
             ResponseUtil.sendJson(response, 400,
                     new ApiResponse<>(false, "Malformed JSON", null));
+        } catch (Exception e) {
+            ResponseUtil.sendJson(response, 500,
+                    new ApiResponse<>(false, "Server error: " + e.getMessage(), null));
         }
     }
 
@@ -66,8 +70,19 @@ public class TaskTrackingServlet extends HttpServlet {
             throws IOException {
 
         if (taskTrackingData == null) {
+            try {
+                taskTrackingData = JsonFileHandler.loadData();
+            } catch (Exception e) {
+                e.printStackTrace();
+                ResponseUtil.sendJson(response, 500,
+                        new ApiResponse<>(false, "Failed to load cached data: " + e.getMessage(), null));
+                return;
+            }
+        }
+
+        if (taskTrackingData == null) {
             ResponseUtil.sendJson(response, 400,
-                    new ApiResponse<>(false, "No data imported yet", null));
+                    new ApiResponse<>(false, "No data imported yet. Please upload data via /import endpoint.", null));
             return;
         }
 
