@@ -119,6 +119,39 @@ public class TaskTrackingServlet extends HttpServlet {
                         new ApiResponse<>(true, "Programs fetched", programs));
             }
 
+            // Projects by Individual
+            else if ("/projects".equals(path)) {
+
+                String individualId = request.getParameter("individualId");
+
+                if (individualId == null || individualId.isEmpty()) {
+                    ResponseUtil.sendJson(response, 400,
+                            new ApiResponse<>(false, "individualId is required", null));
+                    return;
+                }
+
+                if (!ValidationUtil.doesUserExist(individualId, taskTrackingData)) {
+                    ResponseUtil.sendJson(response, 404,
+                            new ApiResponse<>(false, "User not found", null));
+                    return;
+                }
+
+                List<ProjectDetail> projects = new ArrayList<>();
+                for (Program program : taskTrackingData.getPrograms()) {
+                    if (program.getProjects() != null) {
+                        for (Project project : program.getProjects()) {
+                            if (project.getEnrolledIndividuals() != null &&
+                                    project.getEnrolledIndividuals().contains(individualId)) {
+                                projects.add(new ProjectDetail(project.getId(), project.getName(), program.getName()));
+                            }
+                        }
+                    }
+                }
+
+                ResponseUtil.sendJson(response, 200,
+                        new ApiResponse<>(true, "Projects fetched", projects));
+            }
+
             // Pending Task Details
             else if ("/tasks/pending".equals(path)) {
 
