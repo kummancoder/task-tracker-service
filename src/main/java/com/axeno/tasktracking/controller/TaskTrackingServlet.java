@@ -4,6 +4,7 @@ import com.axeno.tasktracking.dto.*;
 import com.axeno.tasktracking.model.*;
 import com.axeno.tasktracking.utils.JsonFileHandler;
 import com.axeno.tasktracking.utils.ResponseUtil;
+import com.axeno.tasktracking.utils.ValidationUtil;
 import com.google.gson.JsonSyntaxException;
 
 import javax.servlet.ServletException;
@@ -100,6 +101,12 @@ public class TaskTrackingServlet extends HttpServlet {
                     return;
                 }
 
+                if (!ValidationUtil.doesUserExist(individualId, taskTrackingData)) {
+                    ResponseUtil.sendJson(response, 404,
+                            new ApiResponse<>(false, "User not found", null));
+                    return;
+                }
+
                 List<IndividualPrograms> programs = taskTrackingData.getPrograms().stream()
                         .filter(program -> program.getProjects() != null &&
                                 program.getProjects().stream()
@@ -120,6 +127,18 @@ public class TaskTrackingServlet extends HttpServlet {
                 String projectId = request.getParameter("projectId");
 
                 if (projectId != null && !projectId.isEmpty()) {
+                    if (!ValidationUtil.doesProjectExist(projectId, taskTrackingData)) {
+                        ResponseUtil.sendJson(response, 404,
+                                new ApiResponse<>(false, "Project not found", null));
+                        return;
+                    }
+
+                    if (individualId != null && !ValidationUtil.doesUserExist(individualId, taskTrackingData)) {
+                        ResponseUtil.sendJson(response, 404,
+                                new ApiResponse<>(false, "User not found", null));
+                        return;
+                    }
+
                     List<com.axeno.tasktracking.dto.ProjectPendingTask> pendingTasks = new ArrayList<>();
                     String resolvedProgramId = null;
                     String programName = null;
@@ -181,6 +200,18 @@ public class TaskTrackingServlet extends HttpServlet {
                     }
 
                 } else if (programId != null && !programId.isEmpty()) {
+                    if (!ValidationUtil.doesProgramExist(programId, taskTrackingData)) {
+                        ResponseUtil.sendJson(response, 404,
+                                new ApiResponse<>(false, "Program not found", null));
+                        return;
+                    }
+
+                    if (individualId != null && !ValidationUtil.doesUserExist(individualId, taskTrackingData)) {
+                        ResponseUtil.sendJson(response, 404,
+                                new ApiResponse<>(false, "User not found", null));
+                        return;
+                    }
+
                     List<UserProgramPendingTask> pendingTasks = new ArrayList<>();
                     String programName = null;
 
@@ -225,6 +256,12 @@ public class TaskTrackingServlet extends HttpServlet {
                             new ApiResponse<>(true, "Pending tasks fetched", result));
 
                 } else {
+                    if (individualId != null && !ValidationUtil.doesUserExist(individualId, taskTrackingData)) {
+                        ResponseUtil.sendJson(response, 404,
+                                new ApiResponse<>(false, "User not found", null));
+                        return;
+                    }
+
                     List<UserPendingTask> pendingTasks = new ArrayList<>();
 
                     for (Program program : taskTrackingData.getPrograms()) {
@@ -269,6 +306,12 @@ public class TaskTrackingServlet extends HttpServlet {
             else if (path.startsWith("/programs/by-project/")) {
 
                 String projectId = path.substring(path.lastIndexOf("/") + 1);
+
+                if (!ValidationUtil.doesProjectExist(projectId, taskTrackingData)) {
+                    ResponseUtil.sendJson(response, 404,
+                            new ApiResponse<>(false, "Project not found", null));
+                    return;
+                }
 
                 String programName = null;
 
