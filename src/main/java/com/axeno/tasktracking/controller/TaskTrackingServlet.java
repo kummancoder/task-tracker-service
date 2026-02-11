@@ -120,7 +120,6 @@ public class TaskTrackingServlet extends HttpServlet {
                 String projectId = request.getParameter("projectId");
 
                 if (projectId != null && !projectId.isEmpty()) {
-                    // Optimized response for specific project
                     List<com.axeno.tasktracking.dto.ProjectPendingTask> pendingTasks = new ArrayList<>();
                     String resolvedProgramId = null;
                     String programName = null;
@@ -152,11 +151,11 @@ public class TaskTrackingServlet extends HttpServlet {
                                                 task.getTitle()));
                                     }
                                 }
-                                break; // Found the project
+                                break;
                             }
                         }
                         if (resolvedProgramId != null)
-                            break; // Found the program and project
+                            break;
                     }
 
                     if (resolvedProgramId != null) {
@@ -182,7 +181,6 @@ public class TaskTrackingServlet extends HttpServlet {
                     }
 
                 } else if (programId != null && !programId.isEmpty()) {
-                    // Optimized response for specific program
                     List<UserProgramPendingTask> pendingTasks = new ArrayList<>();
                     String programName = null;
 
@@ -213,11 +211,11 @@ public class TaskTrackingServlet extends HttpServlet {
                                             task.getTitle()));
                                 }
                             }
-                            break; // Found the program
+                            break;
                         }
                     }
 
-                    Map<String, Object> result = new LinkedHashMap<>(); // LinkedHashMap for order
+                    Map<String, Object> result = new LinkedHashMap<>();
                     result.put("programId", programId);
                     result.put("programName", programName);
                     result.put("count", pendingTasks.size());
@@ -227,7 +225,6 @@ public class TaskTrackingServlet extends HttpServlet {
                             new ApiResponse<>(true, "Pending tasks fetched", result));
 
                 } else {
-                    // Standard response for all programs
                     List<UserPendingTask> pendingTasks = new ArrayList<>();
 
                     for (Program program : taskTrackingData.getPrograms()) {
