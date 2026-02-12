@@ -194,7 +194,7 @@ public class TaskTrackingServlet extends HttpServlet {
                                             continue;
                                         }
                                         if (individualId != null) {
-                                            if (task.getOwners() == null || !task.getOwners().contains(individualId)) {
+                                            if (task.getTeam() == null || !task.getTeam().contains(individualId)) {
                                                 continue;
                                             }
                                         }
@@ -264,7 +264,7 @@ public class TaskTrackingServlet extends HttpServlet {
                                         continue;
                                     }
                                     if (individualId != null) {
-                                        if (task.getOwners() == null || !task.getOwners().contains(individualId)) {
+                                        if (task.getTeam() == null || !task.getTeam().contains(individualId)) {
                                             continue;
                                         }
                                     }
@@ -310,7 +310,7 @@ public class TaskTrackingServlet extends HttpServlet {
                                     continue;
                                 }
                                 if (individualId != null) {
-                                    if (task.getOwners() == null || !task.getOwners().contains(individualId)) {
+                                    if (task.getTeam() == null || !task.getTeam().contains(individualId)) {
                                         continue;
                                     }
                                 }

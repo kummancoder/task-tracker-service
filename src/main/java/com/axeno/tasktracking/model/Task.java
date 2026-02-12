@@ -8,7 +8,8 @@ public class Task {
     private String title;
     private TaskStatus status;
 
-    private List<String> owners;
+    private String owner;
+    private List<String> team;
 
     public Task() {
     }
@@ -37,11 +38,19 @@ public class Task {
         this.status = status;
     }
 
-    public List<String> getOwners() {
-        return owners;
+    public String getOwner() {
+        return owner;
     }
 
-    public void setOwners(List<String> owners) {
-        this.owners = owners;
+    public void setOwner(String owner) {
+        this.owner = owner;
+    }
+
+    public List<String> getTeam() {
+        return team;
+    }
+
+    public void setTeam(List<String> team) {
+        this.team = team;
     }
 }
